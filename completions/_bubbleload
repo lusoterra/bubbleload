@@ -1,0 +1,72 @@
+#compdef bubbleload
+# zsh completion for bubbleload
+#
+# Install as _bubbleload in a directory in $fpath, e.g.
+# /usr/share/zsh/site-functions/_bubbleload (autoloaded after compinit).
+
+_bubbleload_profiles()
+{
+    local -a files profiles
+    local dir
+
+    dir="${XDG_CONFIG_HOME:-$HOME/.config}/bubbleload"
+    files=( $dir/*.conf(N) )
+    profiles=( ${files[@]:t:r} )
+    (( ${#profiles} )) || return 1
+    _describe -t profiles 'profile' profiles
+}
+
+_bubbleload()
+{
+    local -i i
+    local phase=options
+
+    # Loader options are only accepted before BINARY, so work out what the
+    # word under the cursor is: another option, the program itself (also the
+    # word right after "--"), or one of the program's own arguments.
+    for (( i = 2; i < CURRENT; i++ )); do
+        case ${words[i]} in
+            --)
+                if (( i + 1 >= CURRENT )); then
+                    phase=command
+                else
+                    phase=program
+                fi
+                break
+                ;;
+            -p|--profile|-w|--rw|-r|--ro|-P|--project)
+                (( i++ ))
+                ;;
+            -?*) ;;
+            *)
+                phase=program
+                break
+                ;;
+        esac
+    done
+
+    case $phase in
+    program)
+        _files
+        return
+        ;;
+    command)
+        _command_names -e
+        return
+        ;;
+    esac
+
+    _arguments -s \
+        '(-h --help)'{-h,--help}'[show this help]' \
+        '(-l --list)'{-l,--list}'[list available profiles and exit]' \
+        '(-y --yes)'{-y,--yes}'[skip confirmation prompts]' \
+        '(-n --dry-run)'{-n,--dry-run}'[print the bwrap command and exit]' \
+        '(-p --profile)'{-p,--profile}'[use profile NAME]:profile:_bubbleload_profiles' \
+        '(-w --rw)'{-w,--rw}'[extra directory, read-write]:directory:_directories' \
+        '(-r --ro)'{-r,--ro}'[extra directory, read-only]:directory:_directories' \
+        '(-P --project)'{-P,--project}'[project directory]:directory:_directories' \
+        '1:command:_command_names -e' \
+        '*::argument:_files'
+}
+
+_bubbleload "$@"

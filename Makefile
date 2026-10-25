@@ -6,6 +6,10 @@ PREFIX  ?= /usr/local
 DESTDIR ?=
 CC      ?= cc
 
+# Where the license text goes; packages usually set this to
+# /usr/share/licenses/<pkgname>.
+LICENSEDIR ?= $(PREFIX)/share/licenses/bubbleload
+
 BUILD   := build
 BIN     := $(BUILD)/bubbleload
 SANBIN  := $(BUILD)/bubbleload-san
@@ -75,6 +79,20 @@ install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/share/bubbleload/examples
 	install -m 0644 examples/generic.conf examples/opencode.conf \
 		$(DESTDIR)$(PREFIX)/share/bubbleload/examples/
+	install -d $(DESTDIR)$(LICENSEDIR)
+	install -m 0644 LICENSE $(DESTDIR)$(LICENSEDIR)/LICENSE
+	install -d $(DESTDIR)$(PREFIX)/share/bash-completion/completions
+	install -m 0644 completions/bubbleload.bash \
+		$(DESTDIR)$(PREFIX)/share/bash-completion/completions/bubbleload
+	install -d $(DESTDIR)$(PREFIX)/share/zsh/site-functions
+	install -m 0644 completions/_bubbleload \
+		$(DESTDIR)$(PREFIX)/share/zsh/site-functions/_bubbleload
+	install -d $(DESTDIR)$(PREFIX)/share/fish/vendor_completions.d
+	install -m 0644 completions/bubbleload.fish \
+		$(DESTDIR)$(PREFIX)/share/fish/vendor_completions.d/bubbleload.fish
+	install -d $(DESTDIR)$(PREFIX)/share/bubbleload/completions
+	install -m 0755 completions/bubbleload.sh \
+		$(DESTDIR)$(PREFIX)/share/bubbleload/completions/bubbleload.sh
 
 # Convenience for source installs only: copy the example profiles into the
 # per-user config directory, keeping files that are already there.  Packaging

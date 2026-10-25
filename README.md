@@ -26,12 +26,12 @@ make install-profiles   # optional, source installs only: seed ~/.config/bubblel
 make clean
 ```
 
-`make install` writes only under `$(DESTDIR)$(PREFIX)`: the binary and the
-example profiles in `share/bubbleload/examples`.  It never touches a home
-directory, so packaging needs no post-install script.  Profiles live in
-`$XDG_CONFIG_HOME/bubbleload` (falling back to `~/.config/bubbleload`) and the
-binary creates that directory itself on first launch, seeding `generic.conf`
-from its built-in copy (see below).
+`make install` writes only under `$(DESTDIR)$(PREFIX)`: the binary, the
+example profiles in `share/bubbleload/examples`, the shell completions and
+the license.  It never touches a home directory, so packaging needs no
+post-install script.  Profiles live in `$XDG_CONFIG_HOME/bubbleload` (falling
+back to `~/.config/bubbleload`) and the binary creates that directory itself
+on first launch, seeding `generic.conf` from its built-in copy (see below).
 
 The build is `-std=c11 -Wall -Wextra -Wpedantic -Werror` with
 `-O2 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIE -pie`; the test target
@@ -188,6 +188,46 @@ runs `bubbleload -p generic sh -c 'echo ok'` and is skipped when `bwrap` is
 missing; set `BUBBLELOAD_SKIP_SMOKE=1` to skip it as well (package builds do
 this, because a build chroot may not allow unprivileged user namespaces).
 
+## Shell completions
+
+`completions/` ships completion for four environments, all installed by
+`make install`:
+
+| file | installed as | for |
+| --- | --- | --- |
+| `bubbleload.bash` | `share/bash-completion/completions/bubbleload` | bash |
+| `_bubbleload` | `share/zsh/site-functions/_bubbleload` | zsh |
+| `bubbleload.fish` | `share/fish/vendor_completions.d/bubbleload.fish` | fish |
+| `bubbleload.sh` | `share/bubbleload/completions/bubbleload.sh` | POSIX sh, as an external completion command |
+
+The bash, zsh and fish completions offer the loader options, profile names and
+directories for `-p`/`-w`/`-r`/`-P`, complete commands for `BINARY` and fall
+back to plain file names for the program's own arguments; loader options are
+not offered after `BINARY`.  Profile names are read straight from the config
+directory, so pressing TAB never triggers the first-launch seeding.
+
+POSIX sh has no programmable completion API (dash, ksh and mksh cannot run a
+completion function the way those shells can), so `bubbleload.sh` implements
+the "external completion command" protocol instead: it reads `$COMP_LINE` and
+`$COMP_POINT`, prints one candidate per line and always exits 0.  Any shell
+that can run a command for TAB can use it, including bash:
+
+```sh
+complete -C /usr/share/bubbleload/completions/bubbleload.sh bubbleload
+```
+
+For a local build:
+
+```sh
+source completions/bubbleload.bash          # bash
+fpath=(completions $fpath)                  # zsh, then restart compinit
+cp completions/bubbleload.fish ~/.config/fish/completions/
+```
+
+## License
+
+MIT, see `LICENSE`.
+
 ## Design decisions and notes
 
 * **Project directory.**  This repository *is* the `./bubbleload` directory
@@ -243,6 +283,10 @@ this, because a build chroot may not allow unprivileged user namespaces).
   fallback.  When the requested name is already `generic`, the redundant
   "no profile for 'generic'" warning is skipped.
 * **`--long=value`** is accepted for all options that take a value.
+* **Completions are side-effect free.**  They read the config directory with a
+  glob instead of asking the binary, so TAB never creates the directory or
+  seeds `generic.conf`.  The POSIX one is an external completion command
+  because POSIX sh has no programmable completion API.
 * **Difference from the old script.**  The project directory is `-P/--project`
   instead of a positional argument, because everything after `BINARY` belongs
   to the program.  Behaviour of the emitted bwrap argument list is otherwise

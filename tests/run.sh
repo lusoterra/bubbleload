@@ -577,6 +577,129 @@ reference_opencode "$PROJ" "$RW" "$RO" -s abc
 run_bin "" -n -p opencode -P "$PROJ" -w "$RW" -r "$RO" opencode -s abc
 assert_argv "opencode.conf == original script argument list" -- "${REF[@]}"
 
+echo "== completions =="
+
+COMPDIR="$TESTDIR/../completions"
+COMPFIX="$TMP/compfix"
+mkdir -p "$COMPFIX/adir"
+: >"$COMPFIX/alpha"
+: >"$COMPFIX/album"
+
+comp_bash() { # cword words...
+    bash -c '
+        XDG_CONFIG_HOME=$1
+        export XDG_CONFIG_HOME
+        source "$2"
+        COMP_CWORD=$3
+        shift 3
+        COMP_WORDS=("$@")
+        _bubbleload
+        printf "%s\n" "${COMPREPLY[@]}"
+    ' _ "$XDG_CONFIG_HOME" "$COMPDIR/bubbleload.bash" "$@"
+}
+
+comp_posix() { # COMP_LINE
+    COMP_LINE=$1 sh "$COMPDIR/bubbleload.sh"
+}
+
+if bash -n "$COMPDIR/bubbleload.bash" 2>/dev/null; then
+    ok_test "bash completion parses"
+else
+    fail_test "bash completion parses" "$(bash -n "$COMPDIR/bubbleload.bash" 2>&1)"
+fi
+
+out=$(comp_bash 2 bubbleload -p "")
+if grep -qx 'inner' <<<"$out"; then
+    ok_test "bash completion: -p completes profiles"
+else
+    fail_test "bash completion: -p completes profiles" "got: $out"
+fi
+
+out=$(comp_bash 1 bubbleload --r)
+if [ "$out" = "$(printf '%s\n' --rw --ro)" ]; then
+    ok_test "bash completion: options before BINARY"
+else
+    fail_test "bash completion: options before BINARY" "got: $out"
+fi
+
+out=$(comp_bash 2 bubbleload prog -)
+if [ -z "$out" ]; then
+    ok_test "bash completion: no loader options after BINARY"
+else
+    fail_test "bash completion: no loader options after BINARY" "got: $out"
+fi
+
+out=$(comp_posix 'bubbleload -p ')
+if grep -qx 'inner' <<<"$out"; then
+    ok_test "posix completion: -p completes profiles"
+else
+    fail_test "posix completion: -p completes profiles" "got: $out"
+fi
+
+out=$(comp_posix 'bubbleload --r')
+if [ "$out" = "$(printf '%s\n' --ro --rw)" ]; then
+    ok_test "posix completion: options"
+else
+    fail_test "posix completion: options" "got: $out"
+fi
+
+out=$(comp_posix "bubbleload prog $COMPFIX/al")
+if [ "$out" = "$(printf '%s\n' "$COMPFIX/album" "$COMPFIX/alpha")" ]; then
+    ok_test "posix completion: files after BINARY"
+else
+    fail_test "posix completion: files after BINARY" "got: $out"
+fi
+
+out=$(comp_posix "bubbleload -P \"$COMPFIX/a")
+if [ "$out" = "$COMPFIX/adir/" ]; then
+    ok_test "posix completion: quoted directory only yields dirs"
+else
+    fail_test "posix completion: quoted directory only yields dirs" "got: $out"
+fi
+
+out=$(comp_posix "bubbleload prog -w $COMPFIX/")
+if [ "$out" = "$(printf '%s\n' "$COMPFIX/adir" "$COMPFIX/album" \
+    "$COMPFIX/alpha")" ]; then
+    ok_test "posix completion: -w after BINARY is a program argument"
+else
+    fail_test "posix completion: -w after BINARY is a program argument" \
+        "got: $out"
+fi
+
+out=$(comp_posix 'bubbleload -- ')
+if grep -qx 'sh' <<<"$out"; then
+    ok_test "posix completion: commands after --"
+else
+    fail_test "posix completion: commands after --" "got: $out"
+fi
+
+if command -v zsh >/dev/null 2>&1; then
+    if zsh -n "$COMPDIR/_bubbleload" 2>/dev/null; then
+        ok_test "zsh completion parses"
+    else
+        fail_test "zsh completion parses" "$(zsh -n "$COMPDIR/_bubbleload" 2>&1)"
+    fi
+else
+    echo "skip zsh completion: zsh is not installed"
+fi
+
+if command -v fish >/dev/null 2>&1; then
+    if fish --no-execute "$COMPDIR/bubbleload.fish" 2>/dev/null; then
+        ok_test "fish completion parses"
+    else
+        fail_test "fish completion parses" \
+            "$(fish --no-execute "$COMPDIR/bubbleload.fish" 2>&1)"
+    fi
+    out=$(fish -c "source $COMPDIR/bubbleload.fish; complete -C 'bubbleload -p '" 2>/dev/null)
+    if grep -qx 'inner' <<<"$out"; then
+        ok_test "fish completion: -p completes profiles"
+    else
+        fail_test "fish completion: -p completes profiles" "got: $out"
+    fi
+else
+    echo "skip fish completion: fish is not installed"
+fi
+
 echo "== misc =="
 
 run_bin "" -l
