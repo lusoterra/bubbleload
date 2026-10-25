@@ -169,36 +169,90 @@ static int file_exists(const char *path)
     die("cannot access %s: %s", path, strerror(errno));
 }
 
-static void write_generic_profile(const char *dir)
+/* Write the built-in generic template to path.  With excl the file must not
+ * exist yet (O_EXCL).  Returns 0, or -1 with errno set. */
+static int write_template(const char *path, int excl)
 {
-    char *path = conf_file(dir, "generic");
     size_t len = strlen(bl_default_generic);
     size_t off = 0u;
+    int flags = O_WRONLY | O_CREAT | O_CLOEXEC | (excl ? O_EXCL : O_TRUNC);
     int fd;
 
-    mkdir_p(dir, 0755);
-    fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    fd = open(path, flags, 0644);
     if (fd < 0) {
-        die("cannot create %s: %s", path, strerror(errno));
+        return -1;
     }
     if (fchmod(fd, 0644) != 0) {
-        die("cannot set mode of %s: %s", path, strerror(errno));
+        int saved = errno;
+
+        close(fd);
+        unlink(path);
+        errno = saved;
+        return -1;
     }
     while (off < len) {
         ssize_t written = write(fd, bl_default_generic + off, len - off);
 
         if (written < 0) {
+            int saved;
+
             if (errno == EINTR) {
                 continue;
             }
-            die("cannot write %s: %s", path, strerror(errno));
+            saved = errno;
+            close(fd);
+            unlink(path);
+            errno = saved;
+            return -1;
         }
         off += (size_t)written;
     }
     if (close(fd) != 0) {
+        return -1;
+    }
+    return 0;
+}
+
+/* Answer "y" to the regeneration prompt: create it, fail loudly on error. */
+static void write_generic_profile(const char *dir)
+{
+    char *path = conf_file(dir, "generic");
+
+    mkdir_p(dir, 0755);
+    if (write_template(path, 0) != 0) {
         die("cannot write %s: %s", path, strerror(errno));
     }
     warnmsg("wrote built-in generic profile to %s", path);
+    free(path);
+}
+
+/* First launch: the config directory does not exist at all, so create it and
+ * seed generic.conf from the built-in template so that a fresh system works
+ * without any post-install script.  This is best effort; if it fails the
+ * regular fallback logic below reports a clear error.
+ *
+ * An existing directory is never touched, so deleting generic.conf on
+ * purpose still gives the regeneration prompt instead of silently coming
+ * back.  Only generic.conf is seeded: program specific profiles are examples,
+ * not something a package should drop into a user's config directory. */
+static void seed_config_dir(const char *dir)
+{
+    struct stat st;
+    char *path;
+
+    if (stat(dir, &st) == 0) {
+        return;
+    }
+    if (errno != ENOENT) {
+        return;
+    }
+    if (mkdir_p_try(dir, 0755) != 0) {
+        return;
+    }
+    path = conf_file(dir, "generic");
+    if (write_template(path, 1) == 0) {
+        warnmsg("created %s from the built-in template", path);
+    }
     free(path);
 }
 
@@ -427,7 +481,10 @@ int main(int argc, char **argv)
 
     dir = config_dir();
     if (opts.list) {
-        int rc = list_profiles(dir);
+        int rc;
+
+        seed_config_dir(dir);
+        rc = list_profiles(dir);
 
         strvec_free(&raw_ro);
         strvec_free(&raw_rw);
@@ -439,6 +496,7 @@ int main(int argc, char **argv)
         usage(stderr);
         die("missing BINARY");
     }
+    seed_config_dir(dir);
     binary = argv[i];
     bin_index = i;
 

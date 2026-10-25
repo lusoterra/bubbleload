@@ -22,8 +22,16 @@ Everything after `BINARY` is passed to the program untouched.
 make            # build/bubbleload
 make test       # runs tests/run.sh against the normal and the ASan/UBSan build
 make install    # PREFIX=/usr/local, DESTDIR supported
+make install-profiles   # optional, source installs only: seed ~/.config/bubbleload
 make clean
 ```
+
+`make install` writes only under `$(DESTDIR)$(PREFIX)`: the binary and the
+example profiles in `share/bubbleload/examples`.  It never touches a home
+directory, so packaging needs no post-install script.  Profiles live in
+`$XDG_CONFIG_HOME/bubbleload` (falling back to `~/.config/bubbleload`) and the
+binary creates that directory itself on first launch, seeding `generic.conf`
+from its built-in copy (see below).
 
 The build is `-std=c11 -Wall -Wextra -Wpedantic -Werror` with
 `-O2 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIE -pie`; the test target
@@ -70,6 +78,22 @@ current user and must not be group/world writable; otherwise `bubbleload`
 refuses to read them.  The same checks apply to `include`d files.
 
 ### Generic fallback
+
+If the config directory does not exist at all, it is created (mode 0755) and
+`generic.conf` is seeded from the built-in template (mode 0644) before
+anything else happens, so a fresh install works without a post-install
+script:
+
+```
+bubbleload: created /home/you/.config/bubbleload/generic.conf from the built-in template
+```
+
+This only ever happens when the whole directory is missing, and it only seeds
+`generic.conf`; program specific profiles are examples that a package should
+not drop into a user's config directory.  If the directory exists but
+`generic.conf` was deleted, it is *not* recreated behind your back — the
+prompt below runs instead.  Seeding is best effort: if the location is not
+writable, the normal error is reported.
 
 If the profile file does not exist, the special profile `generic`
 (`generic.conf`) is used instead:
@@ -151,9 +175,11 @@ Copy a profile to `~/.config/bubbleload/<name>.conf` (or use `-p`) and run
 sandbox.  It covers option parsing before/after `BINARY`, `--`, `-p`
 overrides, includes and cycle/depth detection, variable expansion errors,
 profile name validation, `$HOME` refusal, the generic fallback (including the
-non-TTY refusal), `extra-binds` placement, byte-for-byte argument
-passthrough, and a word-for-word comparison of `opencode.conf` with the
-argument list the original bash script would build.  One optional smoke test
+non-TTY refusal), first-launch seeding (directory creation, mode 0644,
+identical to the shipped example, never overwriting an existing directory),
+`extra-binds` placement, byte-for-byte argument passthrough, and a
+word-for-word comparison of `opencode.conf` with the argument list the
+original bash script would build.  One optional smoke test
 runs `bubbleload -p generic sh -c 'echo ok'` and is skipped when `bwrap` is
 missing.
 
@@ -171,8 +197,20 @@ missing.
   always appended to whatever the profile's `exec` line says.
 * **Exit codes.**  Everything before `exec` either succeeds or exits 1; there
   is no unsandboxed fallback.  `--dry-run`, `--list` and `--help` exit 0.
-* **`-l` on a missing config directory** prints a note on stderr and exits 0
-  (an empty list is not an error).
+* **First-launch bootstrap.**  The config directory is created and
+  `generic.conf` seeded from the embedded template only when the directory
+  itself is absent, never when it exists with files missing.  The write is
+  best effort (a read-only `$HOME` does not produce a crash, just the normal
+  "generic profile is missing" error), uses `O_EXCL` so a concurrent run
+  cannot clobber a file, and is announced on stderr.  This is a deliberate
+  deviation from the "always prompt when generic.conf is missing" rule in the
+  original spec, limited to the true first launch.
+* **No unsandboxed fallback, no post-install script.**  `make install` only
+  writes under `$(DESTDIR)$(PREFIX)`; the lazy seeding above is what makes a
+  package work on a machine where `bubbleload` has never run.
+* **`-l` on a missing config directory** seeds it first (so a fresh system
+  lists `generic`); if it still does not exist it prints a note on stderr and
+  exits 0 (an empty list is not an error).
 * **`--dry-run`** has no side effects: it does not create `mkdir` directories
   and does not require `bwrap` to be installed.  It still prints the
   "not found in PATH" warning for `BINARY`.

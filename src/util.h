@@ -44,7 +44,9 @@ const char *path_basename(const char *path);
 /* 1 if name is executable and found in $PATH (or is a path itself), else 0. */
 int find_in_path(const char *name);
 
-/* mkdir -p with mode, honouring umask.  Exits on failure. */
+/* mkdir -p with mode, honouring umask.  mkdir_p_try returns -1 with errno set
+ * instead of exiting. */
+int mkdir_p_try(const char *path, mode_t mode);
 void mkdir_p(const char *path, mode_t mode);
 
 /* Refuse to read config files that we do not own or that are group/world

@@ -418,6 +418,78 @@ assert_fail "non-TTY fallback without --yes is refused" "not a TTY"
 run_bin "" -y -n -P "$PROJ" -p generic prog
 assert_stdout_has "-p generic uses the generic profile" "--hostname bwrap-generic"
 
+echo "== first launch bootstrap =="
+
+FRESH="$TMP/fresh/config"
+run_raw "" env XDG_CONFIG_HOME="$FRESH" HOME="$HOME" "$BIN" \
+    -y -n -P "$PROJ" no-such-program
+assert_stdout_has "first launch seeds generic.conf and uses it" "--unshare-all"
+
+if [ -f "$FRESH/bubbleload/generic.conf" ]; then
+    ok_test "first launch creates the config directory"
+else
+    fail_test "first launch creates the config directory" \
+        "$FRESH/bubbleload/generic.conf does not exist"
+fi
+
+if cmp -s "$FRESH/bubbleload/generic.conf" "$EXAMPLES/generic.conf"; then
+    ok_test "seeded generic.conf matches the shipped example"
+else
+    fail_test "seeded generic.conf matches the shipped example" \
+        "differs from $EXAMPLES/generic.conf"
+fi
+
+MODE=$(stat -c %a "$FRESH/bubbleload/generic.conf" 2>/dev/null || echo "?")
+if [ "$MODE" = "644" ]; then
+    ok_test "seeded generic.conf has mode 0644"
+else
+    fail_test "seeded generic.conf has mode 0644" "mode is $MODE"
+fi
+
+printf '\n# user edit\n' >>"$FRESH/bubbleload/generic.conf"
+run_raw "" env XDG_CONFIG_HOME="$FRESH" HOME="$HOME" "$BIN" \
+    -y -n -P "$PROJ" no-such-program
+if grep -qF 'user edit' "$FRESH/bubbleload/generic.conf"; then
+    ok_test "an existing config directory is never re-seeded"
+else
+    fail_test "an existing config directory is never re-seeded" \
+        "generic.conf was overwritten"
+fi
+
+FRESH2="$TMP/fresh2"
+run_raw "" env XDG_CONFIG_HOME="$FRESH2" HOME="$HOME" "$BIN" -l
+assert_stdout_has "-l seeds the config directory on first launch" "generic"
+
+# Deleting generic.conf on purpose must keep the regeneration prompt.
+KEEPCFG="$TMP/keep/config"
+mkdir -p "$KEEPCFG/bubbleload"
+printf 'hostname kept\n' >"$KEEPCFG/bubbleload/other.conf"
+run_raw "" env XDG_CONFIG_HOME="$KEEPCFG" HOME="$HOME" "$BIN" \
+    -y -n -P "$PROJ" prog
+assert_fail "an existing config dir is never auto-seeded" \
+    "generic profile is missing"
+if [ -e "$KEEPCFG/bubbleload/generic.conf" ]; then
+    fail_test "no generic.conf appears in an existing config dir" \
+        "$KEEPCFG/bubbleload/generic.conf was created"
+else
+    ok_test "no generic.conf appears in an existing config dir"
+fi
+
+FRESH3="$TMP/fresh3"
+run_raw "" env XDG_CONFIG_HOME="$FRESH3" HOME="$HOME" "$BIN" -n -P "$PROJ" prog
+assert_fail "first launch still asks for --yes without a TTY" "not a TTY"
+
+if [ "$(id -u)" -ne 0 ]; then
+    RODIR="$TMP/readonly"
+    mkdir -p "$RODIR"
+    chmod 0555 "$RODIR"
+    run_raw "" env XDG_CONFIG_HOME="$RODIR/config" HOME="$HOME" "$BIN" \
+        -y -n -P "$PROJ" prog
+    assert_fail "failed seeding falls back to the normal error" \
+        "generic profile is missing"
+    chmod 0755 "$RODIR"
+fi
+
 echo "== extra binds =="
 
 run_bin "" -y -n -p extra-default -P "$PROJ" -w "$RW" -r "$RO" prog

@@ -244,39 +244,60 @@ int find_in_path(const char *name)
     return 0;
 }
 
-static void make_one_dir(const char *path, mode_t mode)
+static int make_one_dir(const char *path, mode_t mode)
 {
     struct stat st;
 
     if (mkdir(path, mode) == 0) {
-        return;
+        return 0;
     }
     if (errno != EEXIST) {
-        die("mkdir %s: %s", path, strerror(errno));
+        return -1;
     }
     if (stat(path, &st) != 0) {
-        die("mkdir %s: %s", path, strerror(errno));
+        return -1;
     }
     if (!S_ISDIR(st.st_mode)) {
-        die("%s exists but is not a directory", path);
+        errno = ENOTDIR;
+        return -1;
     }
+    return 0;
 }
 
-void mkdir_p(const char *path, mode_t mode)
+int mkdir_p_try(const char *path, mode_t mode)
 {
     char *copy = xstrdup(path);
     char *p;
+    int saved;
 
     for (p = copy + 1; *p != '\0'; p++) {
         if (*p != '/') {
             continue;
         }
         *p = '\0';
-        make_one_dir(copy, mode);
+        if (make_one_dir(copy, mode) != 0) {
+            goto fail;
+        }
         *p = '/';
     }
-    make_one_dir(copy, mode);
+    if (make_one_dir(copy, mode) != 0) {
+        goto fail;
+    }
     free(copy);
+    return 0;
+
+fail:
+    saved = errno;
+    free(copy);
+    errno = saved;
+    return -1;
+}
+
+void mkdir_p(const char *path, mode_t mode)
+{
+    if (mkdir_p_try(path, mode) != 0) {
+        die("mkdir %s: %s", path, strerror(errno));
+    }
 }
 
 void check_secure_file(const char *path)

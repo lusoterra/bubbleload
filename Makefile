@@ -31,7 +31,7 @@ SAN_CFLAGS   := $(STD) $(WARN) -O1 -g $(HARD) -fPIE -MMD -MP \
                 -fsanitize=address,undefined -fno-omit-frame-pointer
 SAN_LDFLAGS  := $(ALL_LDFLAGS) -fsanitize=address,undefined
 
-.PHONY: all test install clean
+.PHONY: all test install install-profiles clean
 
 all: $(BIN)
 
@@ -62,12 +62,31 @@ test: $(BIN) $(SANBIN)
 	UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
 	./tests/run.sh $(SANBIN)
 
+# System install: binary plus example profiles under DESTDIR/PREFIX.  Nothing
+# is written to $HOME; the binary seeds $XDG_CONFIG_HOME/bubbleload itself on
+# first launch, so packages need no post-install script.
 install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin/bubbleload
 	install -d $(DESTDIR)$(PREFIX)/share/bubbleload/examples
 	install -m 0644 examples/generic.conf examples/opencode.conf \
 		$(DESTDIR)$(PREFIX)/share/bubbleload/examples/
+
+# Convenience for source installs only: copy the example profiles into the
+# per-user config directory, keeping files that are already there.  Packaging
+# must not use this target -- the binary only seeds generic.conf by itself.
+install-profiles:
+	@dir=$${XDG_CONFIG_HOME:-$$HOME/.config}/bubbleload; \
+	install -d "$$dir"; \
+	for f in examples/*.conf; do \
+		target="$$dir/$${f##*/}"; \
+		if [ -e "$$target" ]; then \
+			echo "kept      $$target"; \
+		else \
+			install -m 0644 "$$f" "$$target"; \
+			echo "installed $$target"; \
+		fi; \
+	done
 
 clean:
 	rm -rf $(BUILD)
