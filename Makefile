@@ -17,9 +17,13 @@ DEPS    := $(OBJS:.o=.d) $(SANOBJS:.o=.d)
 
 EMBED   := $(BUILD)/generic_default.h
 
-WARN := -Wall -Wextra -Wpedantic -Werror
-STD  := -std=c11 -D_POSIX_C_SOURCE=200809L
-HARD := -D_FORTIFY_SOURCE=2 -fstack-protector-strong
+WARN ?= -Wall -Wextra -Wpedantic -Werror
+STD  ?= -std=c11 -D_POSIX_C_SOURCE=200809L
+# Hardening flags we add ourselves.  Builds that already pass their own (Arch's
+# makepkg CFLAGS carry -D_FORTIFY_SOURCE and -fstack-protector-strong) must
+# override this, e.g. "make HARD=", otherwise _FORTIFY_SOURCE is redefined and
+# -Werror turns that into an error.
+HARD ?= -D_FORTIFY_SOURCE=2 -fstack-protector-strong
 
 CFLAGS  ?= -O2
 LDFLAGS ?=

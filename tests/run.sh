@@ -594,7 +594,9 @@ else
     fi
 fi
 
-if command -v bwrap >/dev/null 2>&1; then
+if [ "${BUBBLELOAD_SKIP_SMOKE:-0}" != "0" ]; then
+    echo "skip smoke test: BUBBLELOAD_SKIP_SMOKE is set"
+elif command -v bwrap >/dev/null 2>&1; then
     run_bin "" -y -p generic -P "$PROJ" sh -c 'echo ok'
     if [ "$RC" -ne 0 ]; then
         fail_test "smoke test: real sandbox runs a command" \

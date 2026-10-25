@@ -36,8 +36,12 @@ from its built-in copy (see below).
 The build is `-std=c11 -Wall -Wextra -Wpedantic -Werror` with
 `-O2 -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fPIE -pie`; the test target
 additionally builds with `-fsanitize=address,undefined` and runs the whole
-suite under it.  `bwrap` is only needed at run time, not for the tests (they
-use `--dry-run`), except for the optional smoke test.
+suite under it.  Builds that already pass their own hardening flags must
+override `HARD` (Arch's `makepkg.conf` does; the AUR PKGBUILD uses
+`make HARD=`), otherwise `_FORTIFY_SOURCE` is redefined and `-Werror` rejects
+it.  `WARN` can be overridden the same way.  `bwrap` is only needed at run
+time, not for the tests (they use `--dry-run`), except for the optional smoke
+test.
 
 The sanitizer run disables LeakSanitizer (`detect_leaks=0`) because the error
 paths intentionally `exit(1)` with a few allocations still live; the successful
@@ -181,7 +185,8 @@ identical to the shipped example, never overwriting an existing directory),
 word-for-word comparison of `opencode.conf` with the argument list the
 original bash script would build.  One optional smoke test
 runs `bubbleload -p generic sh -c 'echo ok'` and is skipped when `bwrap` is
-missing.
+missing; set `BUBBLELOAD_SKIP_SMOKE=1` to skip it as well (package builds do
+this, because a build chroot may not allow unprivileged user namespaces).
 
 ## Design decisions and notes
 
