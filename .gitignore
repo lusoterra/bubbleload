@@ -1,0 +1,6 @@
+# task description, kept locally but not part of the project
+Editor.txt
+
+# build output
+/build/
+*.o
