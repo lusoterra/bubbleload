@@ -16,6 +16,8 @@
 struct options {
     const char *profile; /* -p/--profile */
     const char *project; /* -P/--project */
+    int cwd;             /* -C/--cwd */
+    int allow_home;      /* --allow-home / --dangerous */
     int yes;             /* -y/--yes */
     int dry_run;         /* -n/--dry-run */
     int list;            /* -l/--list */
@@ -33,7 +35,12 @@ static void usage(FILE *out)
           "                       from the basename of BINARY\n"
           "  -w, --rw DIR         extra directory, read-write (repeatable)\n"
           "  -r, --ro DIR         extra directory, read-only (repeatable)\n"
-          "  -P, --project DIR    project directory (default: current directory)\n"
+          "  -P, --project DIR    project directory (no default; use -C/--cwd for\n"
+          "                       the current directory)\n"
+          "  -C, --cwd            expose the current directory (sets $PROJECT)\n"
+          "      --allow-home     allow exposing $HOME (dangerous; overrides the\n"
+          "                       refusal for -P/--cwd and --rw)\n"
+          "      --dangerous      alias for --allow-home\n"
           "  -y, --yes            skip confirmation prompts\n"
           "  -n, --dry-run        print the bwrap command and exit 0\n"
           "  -l, --list           list available profiles and exit\n"
@@ -475,6 +482,15 @@ int main(int argc, char **argv)
                 take_value(argc, argv, &i, "-P/--project", v);
             continue;
         }
+        if (strcmp(a, "-C") == 0 || match_long(a, "--cwd", &v)) {
+            opts.cwd = 1;
+            continue;
+        }
+        if (match_long(a, "--allow-home", &v) ||
+            match_long(a, "--dangerous", &v)) {
+            opts.allow_home = 1;
+            continue;
+        }
         die("unknown option '%s' (try --help)", a);
     }
     have_bin = i < argc;
@@ -507,8 +523,13 @@ int main(int argc, char **argv)
         home_real = xstrdup(home);
     }
     pwd = get_cwd();
-    project = opts.project != NULL ? resolve_dir("-P/--project", opts.project)
-                                   : xstrdup(pwd);
+    if (opts.project != NULL) {
+        project = resolve_dir("-P/--project", opts.project);
+    } else if (opts.cwd) {
+        project = xstrdup(pwd);
+    } else {
+        project = NULL;
+    }
 
     strvec_init(&ro);
     strvec_init(&rw);
@@ -523,15 +544,17 @@ int main(int argc, char **argv)
         }
     }
 
-    if (strcmp(project, home_real) == 0) {
-        die("refusing to expose all of $HOME");
-    }
-    {
-        size_t k;
+    if (!opts.allow_home) {
+        if (project != NULL && strcmp(project, home_real) == 0) {
+            die("refusing to expose all of $HOME");
+        }
+        {
+            size_t k;
 
-        for (k = 0; k < rw.len; k++) {
-            if (strcmp(rw.v[k], home_real) == 0) {
-                die("refusing to expose all of $HOME");
+            for (k = 0; k < rw.len; k++) {
+                if (strcmp(rw.v[k], home_real) == 0) {
+                    die("refusing to expose all of $HOME");
+                }
             }
         }
     }

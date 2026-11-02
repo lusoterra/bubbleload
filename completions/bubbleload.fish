@@ -71,6 +71,13 @@ complete -c bubbleload -s P -l project -x -d 'Project directory' \
     -a '(__fish_complete_directories)' \
     -n __fish_bubbleload_needs_command
 
+complete -c bubbleload -s C -l cwd -d 'Expose the current directory' \
+    -n __fish_bubbleload_needs_command
+complete -c bubbleload -l allow-home -d 'Allow exposing $HOME (dangerous)' \
+    -n __fish_bubbleload_needs_command
+complete -c bubbleload -l dangerous -d 'Alias for --allow-home' \
+    -n __fish_bubbleload_needs_command
+
 # BINARY gets command names, the program's own arguments get plain file names.
 complete -c bubbleload -f -n __fish_bubbleload_at_command \
     -a '(__fish_complete_command)'

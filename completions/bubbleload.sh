@@ -137,7 +137,8 @@ cur=$(printf '%s\n' "$decision" | tail -n +2)
     case $mode in
     options)
         for o in -h --help -l --list -y --yes -n --dry-run \
-            -p --profile -w --rw -r --ro -P --project; do
+            -p --profile -w --rw -r --ro -P --project -C --cwd \
+            --allow-home --dangerous; do
             case $o in
             "$cur"*) printf '%s\n' "$o" ;;
             esac

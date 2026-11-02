@@ -95,7 +95,8 @@ _bubbleload()
 
     if [[ $cur == -* ]]; then
         COMPREPLY=( $(compgen -W '-h --help -l --list -y --yes -n --dry-run
-            -p --profile -w --rw -r --ro -P --project' -- "$cur") )
+            -p --profile -w --rw -r --ro -P --project -C --cwd
+            --allow-home --dangerous' -- "$cur") )
     else
         COMPREPLY=( $(compgen -c -- "$cur") )
     fi

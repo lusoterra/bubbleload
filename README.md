@@ -57,7 +57,10 @@ argument (or `--`) ends loader option parsing.
 | `-p`, `--profile NAME` | profile to use instead of the one derived from `BINARY` |
 | `-w`, `--rw DIR` | extra directory, read-write (repeatable) |
 | `-r`, `--ro DIR` | extra directory, read-only (repeatable) |
-| `-P`, `--project DIR` | project directory (default: current directory) |
+| `-P`, `--project DIR` | project directory (no default; use `-C`/`--cwd`) |
+| `-C`, `--cwd` | expose the current working directory (sets `$PROJECT`) |
+| `--allow-home` | allow exposing `$HOME` (dangerous; overrides the refusal) |
+| `--dangerous` | alias for `--allow-home` |
 | `-y`, `--yes` | skip confirmation prompts |
 | `-n`, `--dry-run` | print the final bwrap command (shell-quoted, one flag group per line) and exit 0 |
 | `-l`, `--list` | list the profiles in the config directory and exit |
@@ -148,7 +151,7 @@ the include position.
 | `mask PATH` | `--ro-bind /dev/null PATH` |
 | `mkdir PATH` | **host side**: `mkdir -p PATH` before launching, so later binds do not fail |
 | `resolv-conf` | if `realpath(/etc/resolv.conf)` is outside `/etc`, add `--ro-bind` of it to itself (systemd-resolved setups) |
-| `project` | `--bind $PROJECT $PROJECT --chdir $PROJECT` |
+| `project` | `--bind $PROJECT $PROJECT --chdir $PROJECT` (no-op with a note if `$PROJECT` is unset) |
 | `extra-binds` | the `--ro`/`--rw` binds from the command line, at this position |
 | `raw ARG...` | tokens passed verbatim to bwrap (escape hatch) |
 
@@ -178,12 +181,12 @@ Copy a profile to `~/.config/bubbleload/<name>.conf` (or use `-p`) and run
 `tests/run.sh` (run by `make test`) only uses `--dry-run`, so it needs no
 sandbox.  It covers option parsing before/after `BINARY`, `--`, `-p`
 overrides, includes and cycle/depth detection, variable expansion errors,
-profile name validation, `$HOME` refusal, the generic fallback (including the
-non-TTY refusal), first-launch seeding (directory creation, mode 0644,
-identical to the shipped example, never overwriting an existing directory),
-`extra-binds` placement, byte-for-byte argument passthrough, and a
-word-for-word comparison of `opencode.conf` with the argument list the
-original bash script would build.  One optional smoke test
+profile name validation, `$HOME` refusal, cwd/home safety (`--cwd`, `--allow-home`,
+`--dangerous`), the generic fallback (including the non-TTY refusal),
+first-launch seeding (directory creation, mode 0644, identical to the shipped
+example, never overwriting an existing directory), `extra-binds` placement,
+byte-for-byte argument passthrough, and a word-for-word comparison of
+`opencode.conf` with the argument list the original bash script would build.  One optional smoke test
 runs `bubbleload -p generic sh -c 'echo ok'` and is skipped when `bwrap` is
 missing; set `BUBBLELOAD_SKIP_SMOKE=1` to skip it as well (package builds do
 this, because a build chroot may not allow unprivileged user namespaces).
@@ -282,6 +285,11 @@ MIT, see `LICENSE`.
   `.foo`), `bubbleload` treats it like a missing profile and uses the generic
   fallback.  When the requested name is already `generic`, the redundant
   "no profile for 'generic'" warning is skipped.
+* **No implicit current directory.**  `$PROJECT` is unset unless `-P DIR` or
+  `--cwd` is given, and a profile's `project` directive is then a no-op (with
+  a note on stderr), so by default a sandbox only exposes what the profile
+  lists.  `--allow-home` (alias `--dangerous`) is the only way to expose
+  `$HOME` or a `--rw` directory equal to it.
 * **`--long=value`** is accepted for all options that take a value.
 * **Completions are side-effect free.**  They read the config directory with a
   glob instead of asking the binary, so TAB never creates the directory or

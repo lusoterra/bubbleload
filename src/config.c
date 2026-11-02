@@ -233,6 +233,9 @@ static int lookup_var(const struct bl_ctx *ctx, const char *name, size_t len,
         return 1;
     }
     if (len == 7u && memcmp(name, "PROJECT", 7u) == 0) {
+        if (ctx->project == NULL) {
+            return 2;
+        }
         *out = ctx->project;
         return 1;
     }
@@ -672,6 +675,12 @@ static void interpret(struct loader *ld)
             emit_extra_binds(e, ctx);
             break;
         case D_PROJECT:
+            if (ctx->project == NULL) {
+                warnmsg("%s:%d: $PROJECT is unset, skipping 'project' "
+                        "(use -P DIR or --cwd to expose a directory)",
+                        d->file, d->line);
+                break;
+            }
             /* Without an explicit "extra-binds" directive the command line
              * binds are placed just before the project mount. */
             if (!has_extra) {

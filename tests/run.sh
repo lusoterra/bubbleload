@@ -399,6 +399,40 @@ assert_fail "missing --rw path is refused" "-w/--rw"
 run_bin "" -y -n -P "$TMP/does-not-exist" prog
 assert_fail "missing -P path is refused" "-P/--project"
 
+echo "== cwd and home safety =="
+
+run_bin "" -y -n -p plain prog
+assert_stdout_lacks "cwd is not exposed by default" \
+    "--bind $PROJ $PROJ --chdir $PROJ"
+
+run_bin "" -y -n --cwd prog
+assert_stdout_has "--cwd exposes the current directory" \
+    "--bind $(pwd -P) $(pwd -P) --chdir $(pwd -P)"
+
+run_bin "" -y -n -C prog
+assert_stdout_has "-C is short for --cwd" \
+    "--bind $(pwd -P) $(pwd -P) --chdir $(pwd -P)"
+
+run_bin "" -y -n -P "$HOME" --allow-home prog
+assert_stdout_has "--allow-home permits exposing \$HOME as the project" \
+    "--bind $HOME $HOME --chdir $HOME"
+
+run_bin "" -y -n -P "$PROJ" -w "$HOME" --allow-home prog
+assert_stdout_has "--allow-home permits a --rw directory equal to \$HOME" \
+    "--bind $HOME $HOME"
+
+run_bin "" -y -n -P "$HOME" --dangerous prog
+assert_stdout_has "--dangerous is an alias for --allow-home" \
+    "--bind $HOME $HOME --chdir $HOME"
+
+run_bin "" -y -n -P "$HOME" prog
+assert_fail "project == \$HOME is still refused without the override" \
+    'refusing to expose all of $HOME'
+
+run_bin "" -y -n -P "$PROJ" -w "$HOME" prog
+assert_fail "--rw == \$HOME is still refused without the override" \
+    'refusing to expose all of $HOME'
+
 echo "== generic fallback =="
 
 run_bin "" -y -n -P "$PROJ" no-such-program

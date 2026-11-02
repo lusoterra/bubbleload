@@ -65,6 +65,9 @@ _bubbleload()
         '(-w --rw)'{-w,--rw}'[extra directory, read-write]:directory:_directories' \
         '(-r --ro)'{-r,--ro}'[extra directory, read-only]:directory:_directories' \
         '(-P --project)'{-P,--project}'[project directory]:directory:_directories' \
+        '(-C --cwd)'{-C,--cwd}'[expose the current directory (sets $PROJECT)]' \
+        '--allow-home[allow exposing $HOME (dangerous)]' \
+        '--dangerous[alias for --allow-home]' \
         '1:command:_command_names -e' \
         '*::argument:_files'
 }
