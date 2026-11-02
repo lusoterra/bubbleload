@@ -11,7 +11,7 @@ bubbleload [loader options] BINARY [args...]
 ```
 
 ```
-bubbleload --rw ../project-pkgbuild opencode -s session_id
+bubbleload --cwd --rw ../project-pkgbuild opencode -s session_id
 ```
 
 Everything after `BINARY` is passed to the program untouched.
