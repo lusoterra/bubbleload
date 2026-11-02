@@ -399,7 +399,16 @@ assert_fail "missing --rw path is refused" "-w/--rw"
 run_bin "" -y -n -P "$TMP/does-not-exist" prog
 assert_fail "missing -P path is refused" "-P/--project"
 
+cat >"$CFG/cwd.conf" <<'EOF'
+die-with-parent
+cwd
+EOF
+
 echo "== cwd and home safety =="
+
+run_bin "" -y -n -p cwd prog
+assert_stdout_has "the cwd directive exposes the current directory" \
+    "--bind $(pwd -P) $(pwd -P) --chdir $(pwd -P)"
 
 run_bin "" -y -n -p plain prog
 assert_stdout_lacks "cwd is not exposed by default" \

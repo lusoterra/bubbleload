@@ -577,10 +577,12 @@ int main(int argc, char **argv)
                                        opts.yes);
 
     ctx.home = home;
+    ctx.home_real = home_real;
     ctx.project = project;
     ctx.pwd = pwd;
     ctx.ro = &ro;
     ctx.rw = &rw;
+    ctx.allow_home = opts.allow_home;
 
     bl_emit_init(&emit);
     bl_load_profile(&emit, &ctx, dir, profile_path);

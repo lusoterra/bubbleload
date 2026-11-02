@@ -152,6 +152,7 @@ the include position.
 | `mkdir PATH` | **host side**: `mkdir -p PATH` before launching, so later binds do not fail |
 | `resolv-conf` | if `realpath(/etc/resolv.conf)` is outside `/etc`, add `--ro-bind` of it to itself (systemd-resolved setups) |
 | `project` | `--bind $PROJECT $PROJECT --chdir $PROJECT` (no-op with a note if `$PROJECT` is unset) |
+| `cwd` | bind and chdir to the current directory (refused if it is `$HOME` without `--allow-home`) |
 | `extra-binds` | the `--ro`/`--rw` binds from the command line, at this position |
 | `raw ARG...` | tokens passed verbatim to bwrap (escape hatch) |
 

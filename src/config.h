@@ -6,10 +6,12 @@
 /* Values available to $VAR / ~ expansion in profile files. */
 struct bl_ctx {
     const char *home;        /* $HOME as set in the environment */
-    const char *project;     /* absolute project directory */
+    const char *home_real;   /* realpath() of $HOME, for the refusal check */
+    const char *project;     /* absolute project directory, or NULL */
     const char *pwd;         /* absolute current working directory */
     const struct strvec *ro; /* absolute --ro directories, in order */
     const struct strvec *rw; /* absolute --rw directories, in order */
+    int allow_home;          /* --allow-home / --dangerous */
 };
 
 /* Result of translating a profile into a bwrap invocation. */

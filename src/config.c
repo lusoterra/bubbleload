@@ -35,6 +35,7 @@ enum dkind {
     D_MKDIR,
     D_RESOLV_CONF,
     D_PROJECT,
+    D_CWD,
     D_EXTRA_BINDS
 };
 
@@ -50,6 +51,7 @@ static const struct dspec specs[] = {
     { "bind",            D_BIND,              1,  2 },
     { "bind-try",        D_BIND_TRY,          1,  2 },
     { "chdir",           D_CHDIR,             1,  1 },
+    { "cwd",             D_CWD,               0,  0 },
     { "dev",             D_DEV,               1,  1 },
     { "die-with-parent", D_DIE_WITH_PARENT,   0,  0 },
     { "dir",             D_DIR,               1,  1 },
@@ -644,7 +646,8 @@ static void interpret(struct loader *ld)
     for (i = 0; i < ld->len; i++) {
         if (ld->list[i].kind == D_EXTRA_BINDS) {
             has_extra = 1;
-        } else if (ld->list[i].kind == D_PROJECT) {
+        } else if (ld->list[i].kind == D_PROJECT ||
+                   ld->list[i].kind == D_CWD) {
             has_project = 1;
         }
     }
@@ -687,6 +690,23 @@ static void interpret(struct loader *ld)
                 emit_extra_binds(e, ctx);
             }
             emit_project(e, ctx);
+            break;
+        case D_CWD:
+            if (!ctx->allow_home && ctx->home_real != NULL &&
+                strcmp(ctx->pwd, ctx->home_real) == 0) {
+                warnmsg("%s:%d: current directory is $HOME, skipping 'cwd' "
+                        "(use --allow-home)", d->file, d->line);
+                break;
+            }
+            if (!has_extra) {
+                emit_extra_binds(e, ctx);
+            }
+            bl_group(e);
+            bl_arg(e, "--bind");
+            bl_arg(e, ctx->pwd);
+            bl_arg(e, ctx->pwd);
+            bl_arg(e, "--chdir");
+            bl_arg(e, ctx->pwd);
             break;
         default:
             emit_directive(e, d);
