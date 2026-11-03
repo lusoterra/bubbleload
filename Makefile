@@ -93,6 +93,9 @@ install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/share/bubbleload/completions
 	install -m 0755 completions/bubbleload.sh \
 		$(DESTDIR)$(PREFIX)/share/bubbleload/completions/bubbleload.sh
+	install -d $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 0644 man/bubbleload.1 \
+		$(DESTDIR)$(PREFIX)/share/man/man1/bubbleload.1
 
 # Convenience for source installs only: copy the example profiles into the
 # per-user config directory, keeping files that are already there.  Packaging

@@ -1,0 +1,45 @@
+.TH BUBBLELOAD 1 "2026" "bubbleload" "User Commands"
+.SH NAME
+bubbleload \- run programs inside a bubblewrap sandbox using per-program profiles
+.SH SYNOPSIS
+.B bubbleload
+[\fIloader options\fR] \fIBINARY\fR [\fIargs...\fR]
+.SH DESCRIPTION
+Run BINARY inside a bubblewrap sandbox using a per-program profile from
+$XDG_CONFIG_HOME/bubbleload/<NAME>.conf.
+.SH OPTIONS
+.TP
+.BR -p ", " --profile " NAME"
+Use profile NAME instead of the one derived from the basename of BINARY.
+.TP
+.BR -w ", " --rw " DIR"
+Extra directory, read-write (repeatable).
+.TP
+.BR -r ", " --ro " DIR"
+Extra directory, read-only (repeatable).
+.TP
+.BR -P ", " --project " DIR"
+Project directory (no default; use -C/--cwd for the current directory).
+.TP
+.BR -C ", " --cwd
+Expose the current directory (sets $PROJECT).
+.TP
+.B --allow-home
+Allow exposing $HOME (dangerous; overrides refusal for -P/--cwd and --rw).
+.TP
+.B --dangerous
+Alias for --allow-home.
+.TP
+.BR -y ", " --yes
+Skip confirmation prompts.
+.TP
+.BR -n ", " --dry-run
+Print the bwrap command and exit 0.
+.TP
+.BR -l ", " --list
+List available profiles and exit.
+.TP
+.BR -h ", " --help
+Show help.
+.SH SEE ALSO
+bwrap(1)
